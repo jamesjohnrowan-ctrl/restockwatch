@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ReStockWatch · Retailer tab checker",
+  "version": "1.2.0",
+  "description": "Checks selected EB Games and Staples console and Zelda controller tabs independently at random 4–6 minute intervals.",
+  "permissions": [
+    "alarms",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.ebgames.ca/*",
+    "http://127.0.0.1:4317/*",
+    "https://www.staples.ca/*",
+    "https://staples.ca/*"
+  ],
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ReStockWatch retailer tabs"
+  }
+}
