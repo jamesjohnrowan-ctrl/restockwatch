@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseEBBrowserSnapshot,parseStaplesSnapshot} from './browser-checker.mjs';
+const name='Nintendo Switch 2 - The Legend of Zelda - 40th Anniversary Edition';
+test('out-of-stock label wins even when an add-to-cart button exists',()=>assert.equal(parseEBBrowserSnapshot({name,stock:'Out of Stock',orderButtonEnabled:true}).status,'out_of_stock'));
+test('positive stock requires both the product stock indicator and enabled ordering',()=>{assert.equal(parseEBBrowserSnapshot({name,stock:'In Stock',orderButtonEnabled:true}).status,'in_stock');assert.equal(parseEBBrowserSnapshot({name,stock:'In Stock',orderButtonEnabled:false}).status,'unknown');assert.equal(parseEBBrowserSnapshot({name,stock:'',orderButtonEnabled:true}).status,'unknown');});
+test('a challenge cannot be misclassified as stock',()=>assert.equal(parseEBBrowserSnapshot({title:'Just a moment...',name,stock:'In Stock',orderButtonEnabled:true}).status,'blocked'));
+test('a different product cannot count as stock',()=>assert.equal(parseEBBrowserSnapshot({name:'Nintendo Switch 2 Pro Controller',stock:'In Stock',orderButtonEnabled:true}).status,'unknown'));
+test('Staples accepts its differently ordered product title and sold-out signal',()=>assert.equal(parseStaplesSnapshot({name:'Nintendo The Legend of Zelda: 40th Anniversary Edition Switch 2 Console',stock:'Out of Stock',orderButtonEnabled:false}).status,'out_of_stock'));
+test('Staples delivery-unavailable and not-sold-in-stores messages are not global sellouts',()=>{for(const stock of ['Delivery currently unavailable','Not sold in stores'])assert.equal(parseStaplesSnapshot({name:'Nintendo The Legend of Zelda: 40th Anniversary Edition Switch 2 Console',stock,orderButtonEnabled:false}).status,'unknown');});
+test('Staples positive stock requires the exact console and enabled online control',()=>{const snapshot={name:'Nintendo The Legend of Zelda: 40th Anniversary Edition Switch 2 Console',stock:'In Stock',orderButtonEnabled:true};assert.equal(parseStaplesSnapshot(snapshot).status,'in_stock');assert.equal(parseStaplesSnapshot({...snapshot,orderButtonEnabled:false}).status,'unknown');assert.equal(parseStaplesSnapshot({...snapshot,name:'Nintendo Zelda 40th Anniversary Switch 2 Pro Controller'}).status,'unknown');});

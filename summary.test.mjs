@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFile} from 'node:fs/promises';
+const source=await readFile(new URL('./public/app.js',import.meta.url),'utf8');
+const summarize=vm.runInNewContext(source.slice(0,source.indexOf('const labels='))+'\nsummarizeStock');
+const rows=(...statuses)=>statuses.map(status=>({status}));
+test('one available retailer makes the product in stock even if another is unknown',()=>assert.equal(summarize(rows('out_of_stock','unknown','in_stock')).status,'in_stock'));
+test('sold out requires every monitored retailer to report sold out',()=>{assert.equal(summarize(rows('out_of_stock','out_of_stock')).status,'out_of_stock');assert.equal(summarize(rows('out_of_stock','blocked')).status,'unknown');});
+test('preview and pending states are not reported as sold out',()=>{assert.equal(summarize([]).status,'pending');assert.equal(summarize(rows('pending','pending')).status,'pending');});
+test('preorder is distinct from confirmed in-stock',()=>assert.equal(summarize(rows('out_of_stock','preorder')).status,'preorder'));
+test('metadata signal gets a possible-stock badge without claiming confirmed availability',()=>{assert.equal(summarize(rows('possible_stock','out_of_stock')).status,'possible_stock');assert.equal(summarize(rows('possible_stock','in_stock')).status,'in_stock');});

@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parsePage,parseBestBuy} from './checker.mjs';
+const name='Nintendo Switch 2 – The Legend of Zelda – 40th Anniversary Edition';
+const page=(offer,extra={})=>`<script type="application/ld+json">${JSON.stringify({'@type':'Product',name,offers:offer,...extra})}</script>`;
+test('Canadian product stock and price are parsed',()=>{const r=parsePage(page({availability:'https://schema.org/InStock',priceCurrency:'CAD',price:709.99}),{id:'costco'});assert.equal(r.status,'in_stock');assert.equal(r.price,709.99);});
+test('sold-out structured data is not overridden by generic add-to-cart text',()=>assert.equal(parsePage(page({availability:'https://schema.org/OutOfStock',priceCurrency:'CAD',price:709.99})+'Add to cart',{id:'nintendo'}).status,'out_of_stock'));
+test('accessory and unrelated stock never count',()=>assert.equal(parsePage(page({availability:'https://schema.org/InStock',priceCurrency:'CAD'},{name:name+' Pro Controller'}),{id:'nintendo'}).status,'unknown'));
+test('marketplace and missing sellers remain unknown',()=>{for(const seller of [undefined,{name:'Third Party'}])assert.equal(parsePage(page({availability:'https://schema.org/InStock',priceCurrency:'CAD',seller}),{id:'amazon'}).status,'unknown');});
+test('verified direct seller may count',()=>assert.equal(parsePage(page({availability:'https://schema.org/InStock',priceCurrency:'CAD',seller:{name:'Amazon.ca'}}),{id:'amazon'}).status,'in_stock'));
+test('foreign currency never becomes confirmed Canadian stock',()=>assert.equal(parsePage(page({availability:'https://schema.org/InStock',priceCurrency:'USD'}),{id:'nintendo'}).status,'unknown'));
+test('challenge is blocked even with HTTP success',()=>assert.equal(parsePage('<title>Just a moment...</title>',{id:'ebgames'}).status,'blocked'));
+test('unknown is preserved without reliable signals',()=>assert.equal(parsePage('In Stock Add to cart Sold out',{id:'nintendo'}).status,'unknown'));
+test('best buy requires correct SKU and online order availability',()=>{const p={sku:'20149861',name,sellerId:'bbyca',salePrice:709.99,availability:{isAvailableOnline:true},isAvailableForOrder:true};assert.equal(parseBestBuy(p).status,'in_stock');assert.equal(parseBestBuy({...p,sku:'wrong'}).status,'unknown');assert.equal(parseBestBuy({...p,isAvailableForOrder:false}).status,'unknown');assert.equal(parseBestBuy({...p,availability:{isAvailableOnline:false,onlineAvailability:'SoldOut'}}).status,'out_of_stock');});
+test('malformed structured data does not crash checks',()=>assert.equal(parsePage('<script type="application/ld+json">broken</script>',{id:'nintendo'}).status,'unknown'));
+test('normal security script references do not falsely mark a product blocked',()=>assert.equal(parsePage('recaptcha.net px-captcha '+page({availability:'https://schema.org/OutOfStock',priceCurrency:'CAD'}),{id:'nintendo'}).status,'out_of_stock'));
+test('Walmart featured marketplace seller is explicitly excluded',()=>{const p={props:{pageProps:{initialData:{data:{product:{usItemId:'4LPRUXHD1MMQ',name,sellerDisplayName:'Third Party',availabilityStatus:'IN_STOCK'}}}}}};const r=parsePage(`<script id="__NEXT_DATA__">${JSON.stringify(p)}</script>`,{id:'walmart'});assert.equal(r.status,'unknown');assert.match(r.note,/marketplace offer excluded/);});

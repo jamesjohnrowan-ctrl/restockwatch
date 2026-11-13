@@ -1,0 +1,16 @@
+{
+  "name": "restockwatch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests.mjs history.test.mjs browser-checker.test.mjs timing.test.mjs extension.test.mjs content.test.mjs sms.test.mjs summary.test.mjs controller.test.mjs metadata.test.mjs",
+    "check:eb": "node check-eb-browser.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "playwright-core": "1.62.1"
+  }
+}
